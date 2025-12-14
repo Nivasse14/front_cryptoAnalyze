@@ -566,18 +566,10 @@
     <div id="scrapingModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🔄 Relancer le Scraping</h2>
+                <h2>🔄 Relancer le Scraping (Cielo)</h2>
                 <span class="close" onclick="closeScrapingModal()">&times;</span>
             </div>
             <div style="padding: 20px;">
-                <div class="control-group" style="margin-bottom: 20px;">
-                    <label>Source de données</label>
-                    <select id="scrapingSource" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                        <option value="gmgn">GMGN</option>
-                        <option value="cielo">Cielo</option>
-                    </select>
-                </div>
-
                 <div class="control-group" style="margin-bottom: 20px;">
                     <label>Mode</label>
                     <select id="scrapingMode" onchange="toggleScrapingMode()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
@@ -600,7 +592,7 @@
 
                 <div id="scrapingStatus" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; display: none;">
                     <div style="font-weight: 600; margin-bottom: 5px;">Statut:</div>
-                    <div id="scrapingStatusText"></div>
+                    <div id="scrapingStatusText" style="white-space: pre-wrap;"></div>
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
@@ -1141,7 +1133,6 @@
             statusText.textContent = 'Préparation...';
 
             let wallets = [];
-            let actualMode = mode;
 
             if (mode === 'selective') {
                 const addresses = document.getElementById('walletAddresses').value;
@@ -1169,7 +1160,6 @@
                 });
 
                 wallets = filtered.map(w => w.wallet_address);
-                actualMode = 'selective';
 
                 if (wallets.length === 0) {
                     statusText.textContent = 'Erreur: Aucun wallet filtré';
@@ -1177,51 +1167,62 @@
                     startBtn.disabled = false;
                     return;
                 }
+            } else if (mode === 'all') {
+                // Get all wallets from current data
+                wallets = allData.map(w => w.wallet_address);
+                
+                if (wallets.length === 0) {
+                    statusText.textContent = 'Erreur: Aucun wallet dans la base de données';
+                    statusText.style.color = 'red';
+                    startBtn.disabled = false;
+                    return;
+                }
+            }
+
+            // Limit to 100 wallets max per batch
+            if (wallets.length > 100) {
+                statusText.textContent = `⚠️ Limitation: Maximum 100 wallets par batch (${wallets.length} sélectionnés). Les 100 premiers seront traités.`;
+                statusText.style.color = 'orange';
+                wallets = wallets.slice(0, 100);
+                await new Promise(resolve => setTimeout(resolve, 2000));
             }
 
             try {
-                const payload = {
-                    source: source,
-                    mode: actualMode,
-                };
-
-                if (actualMode === 'selective') {
-                    payload.wallets = wallets;
-                }
-
-                statusText.textContent = `Démarrage du scraping ${source.toUpperCase()} pour ${actualMode === 'all' ? 'tous les wallets' : wallets.length + ' wallets'}...`;
+                statusText.textContent = `🚀 Démarrage du scraping pour ${wallets.length} wallet(s)...`;
                 
-                const response = await fetch('/api/scraping/start', {
+                const response = await fetch('/api/scraper/batch', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ wallets })
                 });
 
                 const result = await response.json();
 
-                if (response.ok) {
+                if (response.ok && result.success) {
                     statusText.style.color = 'green';
-                    statusText.textContent = `✅ Scraping démarré avec succès! PID: ${result.pid}, Mode: ${result.mode}, Source: ${result.source}. Rafraîchissement automatique activé...`;
+                    statusText.textContent = `✅ Scraping démarré! Job ID: ${result.jobId}\n📊 ${result.walletsCount} wallets en cours de traitement\n⏱️ Temps estimé: ${result.estimatedTime}\n\nRafraîchissement automatique activé...`;
                     
                     // Auto-refresh every 30 seconds
                     let refreshCount = 0;
-                    const maxRefreshes = 20; // 10 minutes max
+                    const totalTime = result.walletsCount * 3; // 3 seconds per wallet
+                    const maxRefreshes = Math.ceil(totalTime / 30) + 2; // Add 2 extra refreshes
                     
                     const refreshInterval = setInterval(async () => {
                         refreshCount++;
-                        statusText.textContent = `✅ Scraping en cours... Rafraîchissement ${refreshCount}/${maxRefreshes}`;
+                        statusText.textContent = `✅ Scraping en cours...\nJob ID: ${result.jobId}\nRafraîchissement ${refreshCount}/${maxRefreshes}\n\nMise à jour des données...`;
                         
                         // Reload data
                         await loadData();
                         
                         if (refreshCount >= maxRefreshes) {
                             clearInterval(refreshInterval);
-                            statusText.textContent = `✅ Scraping terminé. Données mises à jour.`;
+                            statusText.textContent = `✅ Scraping terminé!\nJob ID: ${result.jobId}\n\nDonnées mises à jour. Fermeture dans 3 secondes...`;
                             setTimeout(() => {
                                 closeScrapingModal();
-                            }, 2000);
+                                startBtn.disabled = false;
+                            }, 3000);
                         }
                     }, 30000); // Every 30 seconds
                     
