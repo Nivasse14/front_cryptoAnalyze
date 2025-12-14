@@ -566,10 +566,18 @@
     <div id="scrapingModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🔄 Relancer le Scraping (Cielo)</h2>
+                <h2>🔄 Relancer le Scraping</h2>
                 <span class="close" onclick="closeScrapingModal()">&times;</span>
             </div>
             <div style="padding: 20px;">
+                <div class="control-group" style="margin-bottom: 20px;">
+                    <label>Source de données</label>
+                    <select id="scrapingSource" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="cielo">Cielo Finance (Trading Stats)</option>
+                        <option value="gmgn">GMGN (Market Cap Distribution)</option>
+                    </select>
+                </div>
+
                 <div class="control-group" style="margin-bottom: 20px;">
                     <label>Mode</label>
                     <select id="scrapingMode" onchange="toggleScrapingMode()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
@@ -1179,60 +1187,112 @@
                 }
             }
 
-            // Limit to 100 wallets max per batch
-            if (wallets.length > 100) {
-                statusText.textContent = `⚠️ Limitation: Maximum 100 wallets par batch (${wallets.length} sélectionnés). Les 100 premiers seront traités.`;
+            // Limit to 100 wallets max per batch (for Cielo)
+            if (source === 'cielo' && wallets.length > 100) {
+                statusText.textContent = `⚠️ Limitation Cielo: Maximum 100 wallets par batch (${wallets.length} sélectionnés). Les 100 premiers seront traités.`;
                 statusText.style.color = 'orange';
                 wallets = wallets.slice(0, 100);
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
 
             try {
-                statusText.textContent = `🚀 Démarrage du scraping pour ${wallets.length} wallet(s)...`;
+                let endpoint, payload, estimatedTime;
                 
-                const response = await fetch('/api/scraper/batch', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ wallets })
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    statusText.style.color = 'green';
-                    statusText.textContent = `✅ Scraping démarré! Job ID: ${result.jobId}\n📊 ${result.walletsCount} wallets en cours de traitement\n⏱️ Temps estimé: ${result.estimatedTime}\n\nRafraîchissement automatique activé...`;
+                if (source === 'cielo') {
+                    endpoint = '/api/scraper/batch';
+                    payload = { wallets };
+                    estimatedTime = `${Math.ceil(wallets.length * 3 / 60)} minutes`;
                     
-                    // Auto-refresh every 30 seconds
-                    let refreshCount = 0;
-                    const totalTime = result.walletsCount * 3; // 3 seconds per wallet
-                    const maxRefreshes = Math.ceil(totalTime / 30) + 2; // Add 2 extra refreshes
+                    statusText.textContent = `🚀 Démarrage du scraping Cielo pour ${wallets.length} wallet(s)...`;
                     
-                    const refreshInterval = setInterval(async () => {
-                        refreshCount++;
-                        statusText.textContent = `✅ Scraping en cours...\nJob ID: ${result.jobId}\nRafraîchissement ${refreshCount}/${maxRefreshes}\n\nMise à jour des données...`;
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        statusText.style.color = 'green';
+                        statusText.textContent = `✅ Scraping Cielo démarré! Job ID: ${result.jobId}\n📊 ${result.walletsCount} wallets en cours de traitement\n⏱️ Temps estimé: ${result.estimatedTime}\n\nRafraîchissement automatique activé...`;
                         
-                        // Reload data
-                        await loadData();
+                        // Auto-refresh every 30 seconds
+                        let refreshCount = 0;
+                        const totalTime = result.walletsCount * 3; // 3 seconds per wallet
+                        const maxRefreshes = Math.ceil(totalTime / 30) + 2; // Add 2 extra refreshes
                         
-                        if (refreshCount >= maxRefreshes) {
-                            clearInterval(refreshInterval);
-                            statusText.textContent = `✅ Scraping terminé!\nJob ID: ${result.jobId}\n\nDonnées mises à jour. Fermeture dans 3 secondes...`;
-                            setTimeout(() => {
-                                closeScrapingModal();
-                                startBtn.disabled = false;
-                            }, 3000);
+                        const refreshInterval = setInterval(async () => {
+                            refreshCount++;
+                            statusText.textContent = `✅ Scraping Cielo en cours...\nJob ID: ${result.jobId}\nRafraîchissement ${refreshCount}/${maxRefreshes}\n\nMise à jour des données...`;
+                            
+                            // Reload data
+                            await loadData();
+                            
+                            if (refreshCount >= maxRefreshes) {
+                                clearInterval(refreshInterval);
+                                statusText.textContent = `✅ Scraping Cielo terminé!\nJob ID: ${result.jobId}\n\nDonnées mises à jour. Fermeture dans 3 secondes...`;
+                                setTimeout(() => {
+                                    closeScrapingModal();
+                                    startBtn.disabled = false;
+                                }, 3000);
+                            }
+                        }, 30000); // Every 30 seconds
+                        
+                        // Store interval ID to allow manual stop
+                        window.scrapingRefreshInterval = refreshInterval;
+                    } else {
+                        statusText.style.color = 'red';
+                        statusText.textContent = `❌ Erreur: ${result.error || 'Erreur inconnue'}`;
+                        startBtn.disabled = false;
+                    }
+                    
+                } else if (source === 'gmgn') {
+                    // GMGN scraping - individual requests
+                    statusText.textContent = `🚀 Démarrage du scraping GMGN pour ${wallets.length} wallet(s)...\n⏱️ Temps estimé: ${Math.ceil(wallets.length * 20 / 60)} minutes (20s par wallet)`;
+                    statusText.style.color = 'blue';
+                    
+                    let completed = 0;
+                    let errors = 0;
+                    
+                    for (const wallet of wallets) {
+                        try {
+                            const response = await fetch(`/api/analytics/gmgn/${wallet}`);
+                            
+                            if (response.ok) {
+                                completed++;
+                                statusText.textContent = `✅ GMGN Scraping en cours...\n📊 Progression: ${completed}/${wallets.length}\n❌ Erreurs: ${errors}\n\nDernier wallet traité: ${wallet.substring(0, 8)}...`;
+                            } else {
+                                errors++;
+                                console.error(`Failed to scrape ${wallet}`);
+                            }
+                            
+                            // Rate limiting: 20s between requests (GMGN is slow)
+                            if (completed + errors < wallets.length) {
+                                await new Promise(resolve => setTimeout(resolve, 20000));
+                            }
+                            
+                            // Refresh data every 10 wallets
+                            if (completed % 10 === 0) {
+                                await loadData();
+                            }
+                        } catch (error) {
+                            errors++;
+                            console.error(`Error scraping ${wallet}:`, error);
                         }
-                    }, 30000); // Every 30 seconds
+                    }
                     
-                    // Store interval ID to allow manual stop
-                    window.scrapingRefreshInterval = refreshInterval;
-                } else {
-                    statusText.style.color = 'red';
-                    statusText.textContent = `❌ Erreur: ${result.error || 'Erreur inconnue'}`;
-                    startBtn.disabled = false;
+                    statusText.style.color = 'green';
+                    statusText.textContent = `✅ Scraping GMGN terminé!\n📊 Succès: ${completed}/${wallets.length}\n❌ Erreurs: ${errors}\n\nMise à jour finale des données...`;
+                    
+                    await loadData();
+                    
+                    setTimeout(() => {
+                        closeScrapingModal();
+                        startBtn.disabled = false;
+                    }, 3000);
                 }
+                
             } catch (error) {
                 statusText.style.color = 'red';
                 statusText.textContent = `❌ Erreur réseau: ${error.message}`;
