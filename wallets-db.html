@@ -492,7 +492,8 @@
 
             <div class="button-group">
                 <button class="btn-primary" onclick="loadData()">🔍 Rechercher</button>
-                <button class="btn-secondary" onclick="resetFilters()">🔄 Réinitialiser</button>
+                <button class="btn-primary" onclick="refreshData()" id="refreshBtn">🔄 Rafraîchir</button>
+                <button class="btn-secondary" onclick="resetFilters()">↺ Réinitialiser filtres</button>
                 <button class="btn-export" onclick="exportToCSV()">📥 Exporter CSV</button>
                 <button class="btn-secondary" onclick="toggleColumns()">⚙️ Colonnes</button>
                 <button class="btn-primary" onclick="showScrapingModal()">🔄 Relancer Scraping</button>
@@ -524,6 +525,10 @@
             <div class="stat-card">
                 <div class="stat-label">Wallets Sélectionnés</div>
                 <div class="stat-value" id="selectedCount" style="color: #667eea;">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Dernière màj</div>
+                <div class="stat-value" id="lastUpdate" style="font-size: 14px; color: #6b7280;">-</div>
             </div>
         </div>
 
@@ -721,6 +726,10 @@
                 }
 
                 console.log(`✅ Chargé ${allData.length} wallets au total`);
+                
+                // Update last refresh time
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 
                 applyClientFilters();
                 updateStats();
@@ -1327,6 +1336,42 @@
             }
             if (event.target === scrapingModal) {
                 scrapingModal.style.display = 'none';
+            }
+        }
+
+        // Refresh data function with visual feedback
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Chargement...';
+            btn.style.opacity = '0.6';
+            
+            try {
+                await loadData();
+                
+                // Success feedback
+                btn.innerHTML = '✅ Mis à jour!';
+                btn.style.background = '#10b981';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }, 2000);
+            } catch (error) {
+                // Error feedback
+                btn.innerHTML = '❌ Erreur';
+                btn.style.background = '#ef4444';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }, 2000);
             }
         }
 
