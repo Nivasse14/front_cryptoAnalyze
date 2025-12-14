@@ -778,7 +778,13 @@
                         
                         if (col === 'wallet_address') {
                             return `<td>
-                                <span class="wallet-address" onclick="showWalletDetails('${value}')" title="Cliquer pour voir les détails">${value.substring(0, 8)}...${value.substring(value.length - 4)}</span>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="wallet-address" onclick="showWalletDetails('${value}')" title="Cliquer pour voir les détails">${value.substring(0, 8)}...${value.substring(value.length - 4)}</span>
+                                    <div style="display: flex; gap: 4px;">
+                                        <a href="https://app.cielo.finance/profile/${value}/profile-stats?timeframe=7" target="_blank" rel="noopener noreferrer" title="Voir sur Cielo Finance" style="text-decoration: none; padding: 2px 6px; background: #667eea; color: white; border-radius: 4px; font-size: 10px; font-weight: 600;">CIELO</a>
+                                        <a href="https://gmgn.ai/sol/address/${value}" target="_blank" rel="noopener noreferrer" title="Voir sur GMGN" style="text-decoration: none; padding: 2px 6px; background: #10b981; color: white; border-radius: 4px; font-size: 10px; font-weight: 600;">GMGN</a>
+                                    </div>
+                                </div>
                             </td>`;
                         }
                         
