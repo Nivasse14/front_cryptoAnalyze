@@ -1237,36 +1237,62 @@
 
                     if (response.ok && result.success) {
                         statusText.style.color = 'green';
-                        statusText.textContent = `✅ Scraping Cielo démarré! PID: ${result.pid}\n📊 ${wallets.length} wallets en cours de traitement\n⏱️ Temps estimé: ${estimatedTime}\n\nRafraîchissement automatique activé...`;
+                        statusText.innerHTML = `✅ Scraping Cielo démarré! PID: ${result.pid}<br>📊 ${wallets.length} wallets en cours de traitement<br>⏱️ Temps estimé: ${estimatedTime}<br><br><div style="background: #e5e7eb; border-radius: 10px; height: 20px; margin: 10px 0; overflow: hidden;"><div id="progressBar" style="background: linear-gradient(90deg, #3b82f6, #10b981); height: 100%; width: 0%; transition: width 0.5s;"></div></div><div id="progressText">0/${wallets.length} wallets scrapés</div>`;
                         
                         // Show manual refresh button
                         document.getElementById('manualRefreshBtn').style.display = 'block';
                         
-                        // Auto-refresh every 30 seconds
-                        let refreshCount = 0;
-                        const totalTime = wallets.length * 3; // 3 seconds per wallet
-                        const maxRefreshes = Math.ceil(totalTime / 30) + 2; // Add 2 extra refreshes
+                        let lastScrapedCount = 0;
                         
-                        const refreshInterval = setInterval(async () => {
-                            refreshCount++;
-                            statusText.textContent = `✅ Scraping Cielo en cours...\nPID: ${result.pid}\nRafraîchissement ${refreshCount}/${maxRefreshes}\n\nMise à jour des données...`;
-                            
-                            // Reload data
-                            await loadData();
-                            
-                            if (refreshCount >= maxRefreshes) {
-                                clearInterval(refreshInterval);
-                                statusText.textContent = `✅ Scraping Cielo terminé!\nPID: ${result.pid}\n\nDonnées mises à jour. Fermeture dans 3 secondes...`;
-                                document.getElementById('manualRefreshBtn').style.display = 'none';
-                                setTimeout(() => {
-                                    closeScrapingModal();
-                                    startBtn.disabled = false;
-                                }, 3000);
+                        // Smart auto-refresh: check progress every 5 seconds
+                        const progressInterval = setInterval(async () => {
+                            try {
+                                const progressRes = await fetch('/api/scraping/progress');
+                                const progress = await progressRes.json();
+                                
+                                if (!progress.running) {
+                                    // Scraping terminé
+                                    clearInterval(progressInterval);
+                                    await loadData();
+                                    statusText.style.color = '#10b981';
+                                    statusText.innerHTML = `✅ Scraping Cielo terminé!<br>PID: ${result.pid}<br>📊 ${wallets.length} wallets scrapés avec succès<br><br>Données mises à jour. Fermeture dans 3 secondes...`;
+                                    document.getElementById('manualRefreshBtn').style.display = 'none';
+                                    
+                                    setTimeout(() => {
+                                        closeScrapingModal();
+                                        startBtn.disabled = false;
+                                    }, 3000);
+                                    return;
+                                }
+                                
+                                // Compter les wallets terminés
+                                const scrapedCount = progress.wallets ? progress.wallets.filter(w => w.scraped_at).length : 0;
+                                const percentage = Math.round((scrapedCount / wallets.length) * 100);
+                                
+                                // Mettre à jour la barre de progression
+                                const progressBar = document.getElementById('progressBar');
+                                const progressText = document.getElementById('progressText');
+                                if (progressBar) {
+                                    progressBar.style.width = percentage + '%';
+                                }
+                                if (progressText) {
+                                    progressText.textContent = `${scrapedCount}/${wallets.length} wallets scrapés (${percentage}%)`;
+                                }
+                                
+                                // Rafraîchir uniquement si de nouveaux wallets sont scrapés
+                                if (scrapedCount > lastScrapedCount) {
+                                    console.log(`📊 ${scrapedCount - lastScrapedCount} nouveaux wallets scrapés, rafraîchissement...`);
+                                    await loadData();
+                                    lastScrapedCount = scrapedCount;
+                                }
+                                
+                            } catch (error) {
+                                console.error('Erreur lors de la vérification du progrès:', error);
                             }
-                        }, 30000); // Every 30 seconds
+                        }, 5000); // Check every 5 seconds
                         
                         // Store interval ID to allow manual stop
-                        window.scrapingRefreshInterval = refreshInterval;
+                        window.scrapingRefreshInterval = progressInterval;
                     } else {
                         statusText.style.color = 'red';
                         statusText.textContent = `❌ Erreur: ${result.error || 'Erreur inconnue'}`;
@@ -1294,35 +1320,61 @@
 
                     if (response.ok && result.success) {
                         statusText.style.color = 'green';
-                        statusText.textContent = `✅ Scraping GMGN démarré! PID: ${result.pid}\n📊 ${wallets.length} wallets en cours de traitement\n⏱️ Temps estimé: ${estimatedTime}\n\nRafraîchissement automatique activé...`;
+                        statusText.innerHTML = `✅ Scraping GMGN démarré! PID: ${result.pid}<br>📊 ${wallets.length} wallets en cours de traitement<br>⏱️ Temps estimé: ${estimatedTime}<br><br><div style="background: #e5e7eb; border-radius: 10px; height: 20px; margin: 10px 0; overflow: hidden;"><div id="progressBar" style="background: linear-gradient(90deg, #3b82f6, #10b981); height: 100%; width: 0%; transition: width 0.5s;"></div></div><div id="progressText">0/${wallets.length} wallets scrapés</div>`;
                         
                         // Show manual refresh button
                         document.getElementById('manualRefreshBtn').style.display = 'block';
                         
-                        // Auto-refresh every 60 seconds (GMGN is slower)
-                        let refreshCount = 0;
-                        const totalTime = wallets.length * 20; // 20 seconds per wallet
-                        const maxRefreshes = Math.ceil(totalTime / 60) + 2;
+                        let lastScrapedCount = 0;
                         
-                        const refreshInterval = setInterval(async () => {
-                            refreshCount++;
-                            statusText.textContent = `✅ Scraping GMGN en cours...\nPID: ${result.pid}\nRafraîchissement ${refreshCount}/${maxRefreshes}\n\nMise à jour des données...`;
-                            
-                            // Reload data
-                            await loadData();
-                            
-                            if (refreshCount >= maxRefreshes) {
-                                clearInterval(refreshInterval);
-                                statusText.textContent = `✅ Scraping GMGN terminé!\nPID: ${result.pid}\n\nDonnées mises à jour. Fermeture dans 3 secondes...`;
-                                document.getElementById('manualRefreshBtn').style.display = 'none';
-                                setTimeout(() => {
-                                    closeScrapingModal();
-                                    startBtn.disabled = false;
-                                }, 3000);
+                        // Smart auto-refresh: check progress every 10 seconds (GMGN is slower)
+                        const progressInterval = setInterval(async () => {
+                            try {
+                                const progressRes = await fetch('/api/scraping/progress');
+                                const progress = await progressRes.json();
+                                
+                                if (!progress.running) {
+                                    // Scraping terminé
+                                    clearInterval(progressInterval);
+                                    await loadData();
+                                    statusText.style.color = '#10b981';
+                                    statusText.innerHTML = `✅ Scraping GMGN terminé!<br>PID: ${result.pid}<br>📊 ${wallets.length} wallets scrapés avec succès<br><br>Données mises à jour. Fermeture dans 3 secondes...`;
+                                    document.getElementById('manualRefreshBtn').style.display = 'none';
+                                    
+                                    setTimeout(() => {
+                                        closeScrapingModal();
+                                        startBtn.disabled = false;
+                                    }, 3000);
+                                    return;
+                                }
+                                
+                                // Compter les wallets terminés
+                                const scrapedCount = progress.wallets ? progress.wallets.filter(w => w.scraped_at).length : 0;
+                                const percentage = Math.round((scrapedCount / wallets.length) * 100);
+                                
+                                // Mettre à jour la barre de progression
+                                const progressBar = document.getElementById('progressBar');
+                                const progressText = document.getElementById('progressText');
+                                if (progressBar) {
+                                    progressBar.style.width = percentage + '%';
+                                }
+                                if (progressText) {
+                                    progressText.textContent = `${scrapedCount}/${wallets.length} wallets scrapés (${percentage}%)`;
+                                }
+                                
+                                // Rafraîchir uniquement si de nouveaux wallets sont scrapés
+                                if (scrapedCount > lastScrapedCount) {
+                                    console.log(`📊 ${scrapedCount - lastScrapedCount} nouveaux wallets GMGN scrapés, rafraîchissement...`);
+                                    await loadData();
+                                    lastScrapedCount = scrapedCount;
+                                }
+                                
+                            } catch (error) {
+                                console.error('Erreur lors de la vérification du progrès:', error);
                             }
-                        }, 60000); // Every 60 seconds
+                        }, 10000); // Check every 10 seconds (GMGN is slower)
                         
-                        window.scrapingRefreshInterval = refreshInterval;
+                        window.scrapingRefreshInterval = progressInterval;
                     } else {
                         statusText.style.color = 'red';
                         statusText.textContent = `❌ Erreur: ${result.error || 'Erreur inconnue'}`;
