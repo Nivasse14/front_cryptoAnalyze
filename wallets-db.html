@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallets Database - Analytics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .controls-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .control-group input:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-export {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background: #059669;
+        }
+
+        .stats {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stat-value.positive {
+            color: #10b981;
+        }
+
+        .stat-value.negative {
+            color: #ef4444;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 600px;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 10;
+        }
+
+        th {
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        th:hover {
+            background: #e9ecef;
+        }
+
+        th.sorted-asc::after {
+            content: ' ▲';
+            color: #667eea;
+        }
+
+        th.sorted-desc::after {
+            content: ' ▼';
+            color: #667eea;
+        }
+
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .positive {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            font-size: 12px;
+            color: #667eea;
+            cursor: pointer;
+        }
+
+        .wallet-address:hover {
+            text-decoration: underline;
+        }
+
+        .select-checkbox {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .select-all-container {
+            padding: 10px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pagination {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .pagination-info {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .column-selector {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .column-selector-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .column-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .modal-header h2 {
+            color: #333;
+            font-size: 20px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .holding-time-chart {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .holding-time-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .holding-time-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .holding-time-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .wallet-detail {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Wallets Database Analytics</h1>
+            <p>Analyse complète des performances des wallets avec filtres avancés</p>
+        </div>
+
+        <div class="controls">
+            <div class="controls-row">
+                <div class="control-group">
+                    <label>Timeframe</label>
+                    <select id="timeframe">
+                        <option value="24h">24 heures</option>
+                        <option value="7d" selected>7 jours</option>
+                        <option value="30d">30 jours</option>
+                        <option value="all">Tout</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Recherche Wallet</label>
+                    <input type="text" id="searchWallet" placeholder="Adresse du wallet...">
+                </div>
+
+                <div class="control-group">
+                    <label>PNL Minimum</label>
+                    <input type="number" id="minPnl" placeholder="0">
+                </div>
+
+                <div class="control-group">
+                    <label>Winrate Minimum (%)</label>
+                    <input type="number" id="minWinrate" placeholder="0" min="0" max="100">
+                </div>
+
+                <div class="control-group">
+                    <label>Filtrer ROI</label>
+                    <select id="roiFilter">
+                        <option value="">Tous les ROI</option>
+                        <option value="roi_above_500">ROI > 500%</option>
+                        <option value="roi_200_to_500">ROI 200-500%</option>
+                        <option value="roi_50_to_200">ROI 50-200%</option>
+                        <option value="roi_0_to_50">ROI 0-50%</option>
+                        <option value="roi_neg50_to_0">ROI -50% à 0%</option>
+                        <option value="roi_below_neg50">ROI < -50%</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Trier par</label>
+                    <select id="orderBy">
+                        <option value="total_pnl" selected>PNL Total</option>
+                        <option value="total_roi_percentage">ROI %</option>
+                        <option value="winrate">Winrate</option>
+                        <option value="swap_count">Nombre de swaps</option>
+                        <option value="winning_trades">Trades gagnants</option>
+                        <option value="profitable_tokens">Tokens profitables</option>
+                        <option value="total_buy_amount_usd">Total investi</option>
+                        <option value="best_trade_profit">Meilleur trade</option>
+                        <option value="roi_above_500">ROI > 500%</option>
+                        <option value="roi_200_to_500">ROI 200-500%</option>
+                        <option value="roi_50_to_200">ROI 50-200%</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Ordre</label>
+                    <select id="orderDir">
+                        <option value="DESC" selected>Décroissant</option>
+                        <option value="ASC">Croissant</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="loadData()">🔍 Rechercher</button>
+                <button class="btn-secondary" onclick="resetFilters()">🔄 Réinitialiser</button>
+                <button class="btn-export" onclick="exportToCSV()">📥 Exporter CSV</button>
+                <button class="btn-secondary" onclick="toggleColumns()">⚙️ Colonnes</button>
+                <button class="btn-primary" onclick="showScrapingModal()">🔄 Relancer Scraping</button>
+            </div>
+        </div>
+
+        <div class="column-selector" id="columnSelector" style="display: none;">
+            <div class="column-selector-title">Sélectionner les colonnes à afficher :</div>
+            <div class="column-checkboxes" id="columnCheckboxes"></div>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-label">Total Wallets</div>
+                <div class="stat-value" id="totalWallets">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">PNL Total</div>
+                <div class="stat-value" id="totalPnl">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Winrate Moyen</div>
+                <div class="stat-value" id="avgWinrate">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ROI Moyen</div>
+                <div class="stat-value" id="avgRoi">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Wallets Sélectionnés</div>
+                <div class="stat-value" id="selectedCount" style="color: #667eea;">0</div>
+            </div>
+        </div>
+
+        <div class="select-all-container">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" class="select-checkbox">
+            <label for="selectAllCheckbox" style="cursor: pointer; user-select: none;">Tout sélectionner</label>
+            <button class="btn-primary" onclick="scrapSelectedWallets()" style="margin-left: auto; padding: 8px 16px;">
+                🔄 Scraper la sélection (<span id="selectedCountBtn">0</span>)
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table id="walletsTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <div class="pagination-info" id="paginationInfo">-</div>
+            <div class="pagination-buttons">
+                <button class="btn-secondary" id="prevBtn" onclick="previousPage()" disabled>← Précédent</button>
+                <button class="btn-secondary" id="nextBtn" onclick="nextPage()" disabled>Suivant →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for wallet details -->
+    <div id="walletModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalWalletAddress">Détails du Wallet</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal for scraping -->
+    <div id="scrapingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔄 Relancer le Scraping</h2>
+                <span class="close" onclick="closeScrapingModal()">&times;</span>
+            </div>
+            <div style="padding: 20px;">
+                <div class="control-group" style="margin-bottom: 20px;">
+                    <label>Source de données</label>
+                    <select id="scrapingSource" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="gmgn">GMGN</option>
+                        <option value="cielo">Cielo</option>
+                    </select>
+                </div>
+
+                <div class="control-group" style="margin-bottom: 20px;">
+                    <label>Mode</label>
+                    <select id="scrapingMode" onchange="toggleScrapingMode()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="all">Tous les wallets</option>
+                        <option value="selective">Wallets sélectionnés</option>
+                        <option value="filtered">Wallets affichés (avec filtres)</option>
+                    </select>
+                </div>
+
+                <div id="walletSelectionDiv" style="display: none; margin-bottom: 20px;">
+                    <label style="font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; margin-bottom: 5px; display: block;">
+                        Adresses des wallets (une par ligne)
+                    </label>
+                    <textarea id="walletAddresses" rows="8" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; font-size: 12px;" placeholder="Entrez les adresses de wallets, une par ligne"></textarea>
+                </div>
+
+                <div id="filteredWalletsInfo" style="display: none; padding: 15px; background: #f8f9fa; border-radius: 6px; margin-bottom: 20px;">
+                    <strong id="filteredCount">0</strong> wallets seront scraped (selon les filtres actuels)
+                </div>
+
+                <div id="scrapingStatus" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; display: none;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Statut:</div>
+                    <div id="scrapingStatusText"></div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button onclick="closeScrapingModal()" style="padding: 12px 24px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        Annuler
+                    </button>
+                    <button id="startScrapingBtn" onclick="startScraping()" style="padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        🚀 Lancer le scraping
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let allData = [];
+        let selectedWallets = new Set();
+
+        const DEFAULT_COLUMNS = [
+            'wallet_address', 'total_pnl', 'total_roi_percentage', 'winrate', 
+            'swap_count', 'winning_trades', 'losing_trades', 'total_tokens_held',
+            'profitable_tokens', 'best_trade_profit', 'worst_trade_loss'
+        ];
+
+        const COLUMN_LABELS = {
+            wallet_address: 'Wallet',
+            total_pnl: 'PNL Total',
+            total_roi_percentage: 'ROI %',
+            winrate: 'Winrate %',
+            swap_count: 'Swaps',
+            unique_trading_days: 'Jours trading',
+            winning_trades: 'Trades +',
+            losing_trades: 'Trades -',
+            total_tokens_held: 'Tokens',
+            profitable_tokens: 'Tokens +',
+            losing_tokens: 'Tokens -',
+            best_trade_profit: 'Meilleur trade',
+            worst_trade_loss: 'Pire trade',
+            total_buy_amount_usd: 'Total investi',
+            total_sell_amount_usd: 'Total vendu',
+            average_holding_time_minutes: 'Temps moyen (min)',
+            max_win_streak: 'Série gagnante',
+            total_trades: 'Total trades',
+            roi_above_500: 'ROI >500%',
+            roi_200_to_500: 'ROI 200-500%',
+            roi_50_to_200: 'ROI 50-200%',
+            roi_0_to_50: 'ROI 0-50%',
+            roi_neg50_to_0: 'ROI -50-0%',
+            roi_below_neg50: 'ROI < -50%',
+            hold_0_3_min: 'Hold 0-3min',
+            hold_3_20_min: 'Hold 3-20min',
+            hold_20_60_min: 'Hold 20-60min',
+            hold_1_6_hours: 'Hold 1-6h',
+            hold_6_24_hours: 'Hold 6-24h',
+            hold_gt_24_hours: 'Hold >24h',
+            most_traded_token_symbol: 'Token préféré',
+            scraped_at: 'Dernière mise à jour'
+        };
+
+        let visibleColumns = [...DEFAULT_COLUMNS];
+
+        function toggleColumns() {
+            const selector = document.getElementById('columnSelector');
+            selector.style.display = selector.style.display === 'none' ? 'block' : 'none';
+            
+            if (selector.style.display === 'block' && document.getElementById('columnCheckboxes').children.length === 0) {
+                initColumnSelector();
+            }
+        }
+
+        function initColumnSelector() {
+            const container = document.getElementById('columnCheckboxes');
+            const allColumns = Object.keys(COLUMN_LABELS);
+            
+            container.innerHTML = allColumns.map(col => `
+                <label class="checkbox-label">
+                    <input type="checkbox" value="${col}" ${visibleColumns.includes(col) ? 'checked' : ''} onchange="updateColumns()">
+                    ${COLUMN_LABELS[col]}
+                </label>
+            `).join('');
+        }
+
+        function updateColumns() {
+            const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]');
+            visibleColumns = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+            renderTable(allData);
+        }
+
+        async function loadData() {
+            const timeframe = document.getElementById('timeframe').value;
+            const orderBy = document.getElementById('orderBy').value;
+            const orderDir = document.getElementById('orderDir').value;
+
+            document.getElementById('tableBody').innerHTML = '<tr><td colspan="20" class="loading">Chargement des données</td></tr>';
+
+            try {
+                // Charger toutes les données en faisant plusieurs requêtes si nécessaire
+                allData = [];
+                let page = 1;
+                let hasMore = true;
+                const limit = 1000;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/wallets?timeframe=${timeframe}&page=${page}&limit=${limit}&orderBy=${orderBy}&orderDir=${orderDir}`);
+                    const data = await response.json();
+                    
+                    allData = allData.concat(data.results);
+                    
+                    if (page === 1) {
+                        totalPages = data.totalPages;
+                        document.getElementById('tableBody').innerHTML = `<tr><td colspan="20" class="loading">Chargement ${allData.length} / ${data.total} wallets</td></tr>`;
+                    }
+                    
+                    hasMore = data.hasNext;
+                    page++;
+                }
+
+                console.log(`✅ Chargé ${allData.length} wallets au total`);
+                
+                applyClientFilters();
+                updateStats();
+                updatePagination({ page: 1, total: allData.length, totalPages: 1, hasNext: false, hasPrev: false });
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="20" style="text-align: center; color: red;">Erreur de chargement</td></tr>';
+            }
+        }
+
+        function applyClientFilters() {
+            const searchWallet = document.getElementById('searchWallet').value.toLowerCase();
+            const minPnl = parseFloat(document.getElementById('minPnl').value) || -Infinity;
+            const minWinrate = parseFloat(document.getElementById('minWinrate').value) || 0;
+            const roiFilter = document.getElementById('roiFilter').value;
+
+            const filtered = allData.filter(wallet => {
+                const matchWallet = !searchWallet || wallet.wallet_address.toLowerCase().includes(searchWallet);
+                const matchPnl = wallet.total_pnl >= minPnl;
+                const matchWinrate = wallet.winrate >= minWinrate;
+                const matchRoi = !roiFilter || (wallet[roiFilter] && wallet[roiFilter] > 0);
+                return matchWallet && matchPnl && matchWinrate && matchRoi;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(data) {
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+            console.log(`📊 Rendering ${data.length} wallets with columns:`, visibleColumns);
+
+            // Header
+            thead.innerHTML = `<tr>
+                <th style="width: 50px;"><input type="checkbox" id="headerCheckbox" onchange="toggleSelectAll()" class="select-checkbox"></th>
+                ${visibleColumns.map(col => 
+                `<th onclick="sortTable('${col}')">${COLUMN_LABELS[col] || col}</th>`
+            ).join('')}</tr>`;
+
+            // Body
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; padding: 40px;">Aucun résultat</td></tr>';
+                return;
+            }
+
+            // Log first wallet to debug
+            console.log('First wallet sample:', data[0]);
+
+            tbody.innerHTML = data.map(wallet => `
+                <tr>
+                    <td><input type="checkbox" class="select-checkbox wallet-checkbox" data-wallet="${wallet.wallet_address}" onchange="toggleWalletSelection('${wallet.wallet_address}', this.checked)" ${selectedWallets.has(wallet.wallet_address) ? 'checked' : ''}></td>
+                    ${visibleColumns.map(col => {
+                        const value = wallet[col];
+                        
+                        if (col === 'wallet_address') {
+                            return `<td>
+                                <span class="wallet-address" onclick="showWalletDetails('${value}')" title="Cliquer pour voir les détails">${value.substring(0, 8)}...${value.substring(value.length - 4)}</span>
+                            </td>`;
+                        }
+                        
+                        if (col === 'total_pnl' || col === 'best_trade_profit' || col === 'worst_trade_loss') {
+                            if (value === null || value === undefined) return '<td>-</td>';
+                            const className = value >= 0 ? 'positive' : 'negative';
+                            return `<td class="${className}">$${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+                        }
+                        
+                        if (col === 'total_roi_percentage' || col === 'winrate') {
+                            if (value === null || value === undefined) return '<td>-</td>';
+                            return `<td>${value.toFixed(2)}%</td>`;
+                        }
+                        
+                        if (col === 'total_buy_amount_usd' || col === 'total_sell_amount_usd') {
+                            if (value === null || value === undefined) return '<td>-</td>';
+                            return `<td>$${value.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>`;
+                        }
+                        
+                        if (col === 'scraped_at') {
+                            if (!value) return '<td>-</td>';
+                            const date = new Date(value);
+                            return `<td>${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}</td>`;
+                        }
+                        
+                        if (value === null || value === undefined) return '<td>-</td>';
+                        return `<td>${value}</td>`;
+                    }).join('')}
+                </tr>
+            `).join('');
+        }
+
+        function updateStats() {
+            const searchWallet = document.getElementById('searchWallet').value.toLowerCase();
+            const minPnl = parseFloat(document.getElementById('minPnl').value) || -Infinity;
+            const minWinrate = parseFloat(document.getElementById('minWinrate').value) || 0;
+            const roiFilter = document.getElementById('roiFilter').value;
+
+            const filtered = allData.filter(w => {
+                const matchWallet = !searchWallet || w.wallet_address.toLowerCase().includes(searchWallet);
+                const matchPnl = w.total_pnl >= minPnl;
+                const matchWinrate = w.winrate >= minWinrate;
+                const matchRoi = !roiFilter || (w[roiFilter] && w[roiFilter] > 0);
+                return matchWallet && matchPnl && matchWinrate && matchRoi;
+            });
+
+            const totalPnl = filtered.reduce((sum, w) => sum + (w.total_pnl || 0), 0);
+            const avgWinrate = filtered.length > 0 ? filtered.reduce((sum, w) => sum + (w.winrate || 0), 0) / filtered.length : 0;
+            const avgRoi = filtered.length > 0 ? filtered.reduce((sum, w) => sum + (w.total_roi_percentage || 0), 0) / filtered.length : 0;
+
+            document.getElementById('totalWallets').textContent = filtered.length.toLocaleString();
+            document.getElementById('avgRoi').textContent = avgRoi.toFixed(2) + '%';
+        }
+
+        function toggleWalletSelection(wallet, checked) {
+            if (checked) {
+                selectedWallets.add(wallet);
+            } else {
+                selectedWallets.delete(wallet);
+            }
+            updateSelectedCount();
+        }
+
+        function toggleSelectAll() {
+            const searchWallet = document.getElementById('searchWallet').value.toLowerCase();
+            const minPnl = parseFloat(document.getElementById('minPnl').value) || -Infinity;
+            const minWinrate = parseFloat(document.getElementById('minWinrate').value) || 0;
+            const roiFilter = document.getElementById('roiFilter').value;
+
+            const filtered = allData.filter(w => {
+                const matchWallet = !searchWallet || w.wallet_address.toLowerCase().includes(searchWallet);
+                const matchPnl = w.total_pnl >= minPnl;
+                const matchWinrate = w.winrate >= minWinrate;
+                const matchRoi = !roiFilter || (w[roiFilter] && w[roiFilter] > 0);
+                return matchWallet && matchPnl && matchWinrate && matchRoi;
+            });
+
+            const headerCheckbox = document.getElementById('headerCheckbox');
+            const isChecked = headerCheckbox.checked;
+
+            filtered.forEach(w => {
+                if (isChecked) {
+                    selectedWallets.add(w.wallet_address);
+                } else {
+                    selectedWallets.delete(w.wallet_address);
+                }
+            });
+
+            // Update all visible checkboxes
+            document.querySelectorAll('.wallet-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+            });
+
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const count = selectedWallets.size;
+            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('selectedCountBtn').textContent = count;
+        }
+
+        function scrapSelectedWallets() {
+            if (selectedWallets.size === 0) {
+                alert('Aucun wallet sélectionné');
+                return;
+            }
+
+            // Open scraping modal with selected wallets
+            document.getElementById('scrapingModal').style.display = 'block';
+            document.getElementById('scrapingMode').value = 'selective';
+            
+            // Fill textarea with selected wallets
+            const walletsArray = Array.from(selectedWallets);
+            document.getElementById('walletAddresses').value = walletsArray.join('\n');
+            
+            // Show wallet selection textarea
+            document.getElementById('walletSelectionDiv').style.display = 'block';
+        }
+
+        function updatePagination(data) {
+            document.getElementById('paginationInfo').textContent = 
+                `${data.total} wallets chargés (timeframe: ${document.getElementById('timeframe').value})`;
+            
+            document.getElementById('prevBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'none';
+        }
+
+        function sortTable(column) {
+            const isAsc = document.querySelector(`th[onclick="sortTable('${column}')"]`)?.classList.contains('sorted-asc');
+            
+            allData.sort((a, b) => {
+                const valA = a[column] ?? 0;
+                const valB = b[column] ?? 0;
+                return isAsc ? (valB > valA ? 1 : -1) : (valA > valB ? 1 : -1);
+            });
+
+            document.querySelectorAll('th').forEach(th => th.className = '');
+            document.querySelector(`th[onclick="sortTable('${column}')"]`).className = isAsc ? 'sorted-desc' : 'sorted-asc';
+
+            applyClientFilters();
+        }
+
+        function nextPage() {
+            // Not used anymore since we load all data
+        }
+
+        function previousPage() {
+            // Not used anymore since we load all data
+        }
+
+        function resetFilters() {
+            document.getElementById('searchWallet').value = '';
+            document.getElementById('minPnl').value = '';
+            document.getElementById('minWinrate').value = '';
+            document.getElementById('roiFilter').value = '';
+            document.getElementById('timeframe').value = '7d';
+            document.getElementById('orderBy').value = 'total_pnl';
+            document.getElementById('orderDir').value = 'DESC';
+            currentPage = 1;
+            loadData();
+        }
+
+        function exportToCSV() {
+            const searchWallet = document.getElementById('searchWallet').value.toLowerCase();
+            const minPnl = parseFloat(document.getElementById('minPnl').value) || -Infinity;
+            const minWinrate = parseFloat(document.getElementById('minWinrate').value) || 0;
+            const roiFilter = document.getElementById('roiFilter').value;
+
+            const filtered = allData.filter(w => {
+                const matchWallet = !searchWallet || w.wallet_address.toLowerCase().includes(searchWallet);
+                const matchPnl = w.total_pnl >= minPnl;
+                const matchWinrate = w.winrate >= minWinrate;
+                const matchRoi = !roiFilter || (w[roiFilter] && w[roiFilter] > 0);
+                return matchWallet && matchPnl && matchWinrate && matchRoi;
+            });
+
+            const headers = visibleColumns.map(col => COLUMN_LABELS[col] || col).join(',');
+            const rows = filtered.map(wallet => 
+                visibleColumns.map(col => {
+                    const value = wallet[col];
+                    return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+                }).join(',')
+            );
+
+            const csv = [headers, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wallets_export_${Date.now()}.csv`;
+            a.click();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('Adresse copiée : ' + text);
+        }
+
+        async function showWalletDetails(walletAddress) {
+            const modal = document.getElementById('walletModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalTitle = document.getElementById('modalWalletAddress');
+            
+            modalTitle.textContent = 'Détails - ' + walletAddress;
+            modalContent.innerHTML = '<div class="loading">Chargement des détails</div>';
+            modal.style.display = 'block';
+
+            // Find wallet in current data
+            const wallet = allData.find(w => w.wallet_address === walletAddress);
+            
+            if (!wallet) {
+                modalContent.innerHTML = '<p style="color: red;">Wallet non trouvé dans les données actuelles</p>';
+                return;
+            }
+
+            // Build detailed view
+            const holdingTimeData = [
+                { label: '0-3 min', value: wallet.hold_0_3_min || 0 },
+                { label: '3-20 min', value: wallet.hold_3_20_min || 0 },
+                { label: '20-60 min', value: wallet.hold_20_60_min || 0 },
+                { label: '1-6 heures', value: wallet.hold_1_6_hours || 0 },
+                { label: '6-24 heures', value: wallet.hold_6_24_hours || 0 },
+                { label: '> 24 heures', value: wallet.hold_gt_24_hours || 0 }
+            ];
+
+            const roiDistribution = [
+                { label: 'ROI > 500%', value: wallet.roi_above_500 || 0 },
+                { label: 'ROI 200-500%', value: wallet.roi_200_to_500 || 0 },
+                { label: 'ROI 50-200%', value: wallet.roi_50_to_200 || 0 },
+                { label: 'ROI 0-50%', value: wallet.roi_0_to_50 || 0 },
+                { label: 'ROI -50-0%', value: wallet.roi_neg50_to_0 || 0 },
+                { label: 'ROI < -50%', value: wallet.roi_below_neg50 || 0 }
+            ];
+
+            modalContent.innerHTML = `
+                <div class="wallet-detail">
+                    <div class="detail-item">
+                        <div class="detail-label">Adresse complète</div>
+                        <div class="detail-value" style="font-size: 12px; word-break: break-all;">${walletAddress}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">PNL Total</div>
+                        <div class="detail-value" style="color: ${wallet.total_pnl >= 0 ? '#10b981' : '#ef4444'}">$${wallet.total_pnl?.toLocaleString('en-US', {minimumFractionDigits: 2}) || '0.00'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">ROI %</div>
+                        <div class="detail-value">${wallet.total_roi_percentage?.toFixed(2) || '0.00'}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Winrate</div>
+                        <div class="detail-value">${wallet.winrate?.toFixed(2) || '0.00'}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Total Swaps</div>
+                        <div class="detail-value">${wallet.swap_count || 0}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Jours de trading</div>
+                        <div class="detail-value">${wallet.unique_trading_days || 0}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Temps moyen de holding</div>
+                        <div class="detail-value">${wallet.average_holding_time_minutes || 0} min</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Meilleur trade</div>
+                        <div class="detail-value" style="color: #10b981">$${wallet.best_trade_profit?.toLocaleString('en-US', {minimumFractionDigits: 2}) || '0.00'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Pire trade</div>
+                        <div class="detail-value" style="color: #ef4444">$${wallet.worst_trade_loss?.toLocaleString('en-US', {minimumFractionDigits: 2}) || '0.00'}</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0; color: #333;">Distribution du temps de holding</h3>
+                <div class="holding-time-chart">
+                    ${holdingTimeData.map(item => `
+                        <div class="holding-time-item">
+                            <div class="holding-time-label">${item.label}</div>
+                            <div class="holding-time-value">${item.value}</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0; color: #333;">Distribution ROI</h3>
+                <div class="holding-time-chart">
+                    ${roiDistribution.map(item => `
+                        <div class="holding-time-item">
+                            <div class="holding-time-label">${item.label}</div>
+                            <div class="holding-time-value">${item.value}</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <button class="btn-secondary" onclick="copyToClipboard('${walletAddress}')" style="margin-top: 20px;">📋 Copier l'adresse</button>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('walletModal').style.display = 'none';
+        }
+
+        function showScrapingModal() {
+            document.getElementById('scrapingModal').style.display = 'block';
+            toggleWalletSelection();
+        }
+
+        function closeScrapingModal() {
+            // Stop auto-refresh if running
+            if (window.scrapingRefreshInterval) {
+                clearInterval(window.scrapingRefreshInterval);
+                window.scrapingRefreshInterval = null;
+            }
+            document.getElementById('scrapingModal').style.display = 'none';
+        }
+
+        function toggleScrapingMode() {
+            const mode = document.getElementById('scrapingMode').value;
+            const selectionDiv = document.getElementById('walletSelectionDiv');
+            const filteredDiv = document.getElementById('filteredWalletsInfo');
+            
+            if (mode === 'selective') {
+                selectionDiv.style.display = 'block';
+                filteredDiv.style.display = 'none';
+            } else if (mode === 'filtered') {
+                selectionDiv.style.display = 'none';
+                filteredDiv.style.display = 'block';
+                
+                // Get current filtered wallets
+                const searchWallet = document.getElementById('searchWallet').value.toLowerCase();
+                const minPnl = parseFloat(document.getElementById('minPnl').value) || -Infinity;
+                const minWinrate = parseFloat(document.getElementById('minWinrate').value) || 0;
+                const roiFilter = document.getElementById('roiFilter').value;
+
+                const filtered = allData.filter(w => {
+                    const matchWallet = !searchWallet || w.wallet_address.toLowerCase().includes(searchWallet);
+                    const matchPnl = w.total_pnl >= minPnl;
+                    const matchWinrate = w.winrate >= minWinrate;
+                    const matchRoi = !roiFilter || (w[roiFilter] && w[roiFilter] > 0);
+                    return matchWallet && matchPnl && matchWinrate && matchRoi;
+                });
+
+                document.getElementById('filteredCount').textContent = filtered.length;
+            } else {
+                selectionDiv.style.display = 'none';
+                filteredDiv.style.display = 'none';
+            }
+        }
+
+        async function startScraping() {
+            const source = document.getElementById('scrapingSource').value;
+            const mode = document.getElementById('scrapingMode').value;
+            const statusDiv = document.getElementById('scrapingStatus');
+            const statusText = document.getElementById('scrapingStatusText');
+            const startBtn = document.getElementById('startScrapingBtn');
+
+            startBtn.disabled = true;
+            statusDiv.style.display = 'block';
+            statusText.textContent = 'Préparation...';
+
+            let wallets = [];
+            let actualMode = mode;
+
+            if (mode === 'selective') {
+                const addresses = document.getElementById('walletAddresses').value;
+                wallets = addresses.split('\n').map(a => a.trim()).filter(a => a.length > 0);
+                
+                if (wallets.length === 0) {
+                    statusText.textContent = 'Erreur: Aucune adresse fournie';
+                    statusText.style.color = 'red';
+                    startBtn.disabled = false;
+                    return;
+                }
+            } else if (mode === 'filtered') {
+                // Get filtered wallets
+                const searchWallet = document.getElementById('searchWallet').value.toLowerCase();
+                const minPnl = parseFloat(document.getElementById('minPnl').value) || -Infinity;
+                const minWinrate = parseFloat(document.getElementById('minWinrate').value) || 0;
+                const roiFilter = document.getElementById('roiFilter').value;
+
+                const filtered = allData.filter(w => {
+                    const matchWallet = !searchWallet || w.wallet_address.toLowerCase().includes(searchWallet);
+                    const matchPnl = w.total_pnl >= minPnl;
+                    const matchWinrate = w.winrate >= minWinrate;
+                    const matchRoi = !roiFilter || (w[roiFilter] && w[roiFilter] > 0);
+                    return matchWallet && matchPnl && matchWinrate && matchRoi;
+                });
+
+                wallets = filtered.map(w => w.wallet_address);
+                actualMode = 'selective';
+
+                if (wallets.length === 0) {
+                    statusText.textContent = 'Erreur: Aucun wallet filtré';
+                    statusText.style.color = 'red';
+                    startBtn.disabled = false;
+                    return;
+                }
+            }
+
+            try {
+                const payload = {
+                    source: source,
+                    mode: actualMode,
+                };
+
+                if (actualMode === 'selective') {
+                    payload.wallets = wallets;
+                }
+
+                statusText.textContent = `Démarrage du scraping ${source.toUpperCase()} pour ${actualMode === 'all' ? 'tous les wallets' : wallets.length + ' wallets'}...`;
+                
+                const response = await fetch('/api/scraping/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusText.style.color = 'green';
+                    statusText.textContent = `✅ Scraping démarré avec succès! PID: ${result.pid}, Mode: ${result.mode}, Source: ${result.source}. Rafraîchissement automatique activé...`;
+                    
+                    // Auto-refresh every 30 seconds
+                    let refreshCount = 0;
+                    const maxRefreshes = 20; // 10 minutes max
+                    
+                    const refreshInterval = setInterval(async () => {
+                        refreshCount++;
+                        statusText.textContent = `✅ Scraping en cours... Rafraîchissement ${refreshCount}/${maxRefreshes}`;
+                        
+                        // Reload data
+                        await loadData();
+                        
+                        if (refreshCount >= maxRefreshes) {
+                            clearInterval(refreshInterval);
+                            statusText.textContent = `✅ Scraping terminé. Données mises à jour.`;
+                            setTimeout(() => {
+                                closeScrapingModal();
+                            }, 2000);
+                        }
+                    }, 30000); // Every 30 seconds
+                    
+                    // Store interval ID to allow manual stop
+                    window.scrapingRefreshInterval = refreshInterval;
+                } else {
+                    statusText.style.color = 'red';
+                    statusText.textContent = `❌ Erreur: ${result.error || 'Erreur inconnue'}`;
+                    startBtn.disabled = false;
+                }
+            } catch (error) {
+                statusText.style.color = 'red';
+                statusText.textContent = `❌ Erreur réseau: ${error.message}`;
+                startBtn.disabled = false;
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const walletModal = document.getElementById('walletModal');
+            const scrapingModal = document.getElementById('scrapingModal');
+            
+            if (event.target === walletModal) {
+                walletModal.style.display = 'none';
+            }
+            if (event.target === scrapingModal) {
+                scrapingModal.style.display = 'none';
+            }
+        }
+
+        // Auto-refresh on filter change
+        document.getElementById('searchWallet').addEventListener('input', applyClientFilters);
+        document.getElementById('minPnl').addEventListener('input', applyClientFilters);
+        document.getElementById('minWinrate').addEventListener('input', applyClientFilters);
+        document.getElementById('roiFilter').addEventListener('change', applyClientFilters);
+
+        // Load data on page load
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>
