@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallets Favoris - Crypto Analytics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background: #764ba2;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .add-favorite {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .add-favorite input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .add-favorite input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-add {
+            padding: 12px 30px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-add:hover {
+            background: #059669;
+            transform: scale(1.05);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            padding: 12px 24px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        tbody tr {
+            transition: all 0.3s;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .wallet-address:hover {
+            text-decoration: underline;
+        }
+
+        .positive {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .negative {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 18px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+
+        .favorite-star {
+            cursor: pointer;
+            font-size: 20px;
+            color: #fbbf24;
+            transition: all 0.3s;
+        }
+
+        .favorite-star:hover {
+            transform: scale(1.2);
+        }
+
+        .profile-links {
+            display: flex;
+            gap: 5px;
+        }
+
+        .profile-link {
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: white;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .profile-link.cielo {
+            background: #667eea;
+        }
+
+        .profile-link.gmgn {
+            background: #10b981;
+        }
+
+        .profile-link:hover {
+            transform: scale(1.1);
+            opacity: 0.9;
+        }
+
+        .info-box {
+            background: #e0e7ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box p {
+            color: #4338ca;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⭐ Wallets Favoris</h1>
+            <p class="subtitle">Suivez vos wallets préférés en un coup d'œil</p>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="wallets-db.html" class="nav-btn">📊 Tous les Wallets</a>
+            <a href="favorites.html" class="nav-btn active">⭐ Favoris</a>
+        </div>
+
+        <div class="controls">
+            <div class="add-favorite">
+                <input type="text" 
+                       id="walletInput" 
+                       placeholder="Entrez une adresse de wallet Solana (ex: 7qT4fKLKT7kLThgRAq6Lnmq4UPFSq8M3ZeroktMpmBPe)"
+                       value="">
+                <button class="btn-add" onclick="addFavorite()">➕ Ajouter aux Favoris</button>
+            </div>
+
+            <div class="info-box">
+                <p>💡 <strong>Astuce :</strong> Les favoris sont sauvegardés localement dans votre navigateur</p>
+                <p>🔄 Cliquez sur "Rafraîchir" pour mettre à jour les données</p>
+            </div>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-label">Favoris Total</div>
+                <div class="stat-value" id="totalFavorites">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">PNL Total</div>
+                <div class="stat-value" id="totalPnl">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ROI Moyen</div>
+                <div class="stat-value" id="avgRoi">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Winrate Moyen</div>
+                <div class="stat-value" id="avgWinrate">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Dernière MAJ</div>
+                <div class="stat-value" id="lastUpdate" style="font-size: 14px;">-</div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-primary" onclick="loadFavorites()">🔄 Rafraîchir</button>
+            <button class="btn-danger" onclick="clearAllFavorites()">🗑️ Supprimer tous les favoris</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>⭐</th>
+                    <th>Wallet</th>
+                    <th>PnL (7d)</th>
+                    <th>ROI (%)</th>
+                    <th>Winrate (%)</th>
+                    <th>Trades</th>
+                    <th>Holding Time</th>
+                    <th>Profils</th>
+                    <th>Dernière MAJ</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="9" class="loading">Chargement des favoris...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const FAVORITES_KEY = 'crypto_favorites';
+        let favorites = [];
+        let walletsData = [];
+
+        // Initialiser avec le wallet fourni
+        function initializeFavorites() {
+            const stored = localStorage.getItem(FAVORITES_KEY);
+            if (stored) {
+                favorites = JSON.parse(stored);
+            } else {
+                // Ajouter le wallet par défaut
+                favorites = ['7qT4fKLKT7kLThgRAq6Lnmq4UPFSq8M3ZeroktMpmBPe'];
+                saveFavorites();
+            }
+        }
+
+        function saveFavorites() {
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+        }
+
+        function addFavorite() {
+            const input = document.getElementById('walletInput');
+            const address = input.value.trim();
+
+            if (!address) {
+                alert('⚠️ Veuillez entrer une adresse de wallet');
+                return;
+            }
+
+            if (address.length < 32) {
+                alert('⚠️ Adresse de wallet invalide (trop courte)');
+                return;
+            }
+
+            if (favorites.includes(address)) {
+                alert('ℹ️ Ce wallet est déjà dans vos favoris');
+                return;
+            }
+
+            favorites.push(address);
+            saveFavorites();
+            input.value = '';
+            
+            alert('✅ Wallet ajouté aux favoris !');
+            loadFavorites();
+        }
+
+        function removeFavorite(address) {
+            if (confirm(`🗑️ Supprimer ${address.slice(0, 8)}...${address.slice(-4)} des favoris ?`)) {
+                favorites = favorites.filter(f => f !== address);
+                saveFavorites();
+                loadFavorites();
+            }
+        }
+
+        function clearAllFavorites() {
+            if (confirm('⚠️ Êtes-vous sûr de vouloir supprimer TOUS les favoris ?')) {
+                favorites = [];
+                saveFavorites();
+                loadFavorites();
+            }
+        }
+
+        async function loadFavorites() {
+            const tbody = document.getElementById('tableBody');
+            
+            if (favorites.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">⭐</div>
+                                <h3>Aucun favori</h3>
+                                <p>Ajoutez des wallets à vos favoris pour les suivre facilement</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                updateStats([]);
+                return;
+            }
+
+            tbody.innerHTML = '<tr><td colspan="9" class="loading">Chargement des données...</td></tr>';
+
+            try {
+                // Charger les données de tous les wallets
+                const response = await fetch('/api/wallets?timeframe=7d&page=1&limit=1000');
+                const data = await response.json();
+                
+                // Filtrer uniquement les favoris
+                walletsData = data.results.filter(w => favorites.includes(w.wallet_address));
+                
+                // Si certains favoris ne sont pas en base, les afficher quand même
+                favorites.forEach(fav => {
+                    if (!walletsData.find(w => w.wallet_address === fav)) {
+                        walletsData.push({
+                            wallet_address: fav,
+                            total_pnl: null,
+                            total_roi_percentage: null,
+                            winrate: null,
+                            swap_count: null,
+                            average_holding_time: null,
+                            scraped_at: null
+                        });
+                    }
+                });
+
+                renderTable(walletsData);
+                updateStats(walletsData);
+                
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('fr-FR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">Erreur de chargement</td></tr>';
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">⭐</div>
+                                <h3>Aucun favori</h3>
+                                <p>Ajoutez des wallets à vos favoris pour les suivre facilement</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = data.map(wallet => {
+                const pnl = wallet.total_pnl ? wallet.total_pnl.toFixed(2) : 'N/A';
+                const roi = wallet.total_roi_percentage ? wallet.total_roi_percentage.toFixed(2) : 'N/A';
+                const winrate = wallet.winrate ? wallet.winrate.toFixed(2) : 'N/A';
+                const trades = wallet.swap_count || 'N/A';
+                const holdingTime = wallet.average_holding_time ? `${wallet.average_holding_time} min` : 'N/A';
+                const scrapedAt = wallet.scraped_at || 'Jamais';
+                
+                const pnlClass = wallet.total_pnl > 0 ? 'positive' : wallet.total_pnl < 0 ? 'negative' : '';
+                
+                return `
+                    <tr>
+                        <td><span class="favorite-star" onclick="removeFavorite('${wallet.wallet_address}')" title="Retirer des favoris">⭐</span></td>
+                        <td>
+                            <span class="wallet-address" onclick="copyToClipboard('${wallet.wallet_address}')" title="Cliquer pour copier">
+                                ${wallet.wallet_address.slice(0, 8)}...${wallet.wallet_address.slice(-4)}
+                            </span>
+                        </td>
+                        <td class="${pnlClass}">$${pnl}</td>
+                        <td>${roi}%</td>
+                        <td>${winrate}%</td>
+                        <td>${trades}</td>
+                        <td>${holdingTime}</td>
+                        <td>
+                            <div class="profile-links">
+                                <a href="https://app.cielo.finance/profile/${wallet.wallet_address}/profile-stats?timeframe=7" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer" 
+                                   class="profile-link cielo">CIELO</a>
+                                <a href="https://gmgn.ai/sol/address/${wallet.wallet_address}" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer" 
+                                   class="profile-link gmgn">GMGN</a>
+                            </div>
+                        </td>
+                        <td style="font-size: 12px;">${scrapedAt}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStats(data) {
+            const validData = data.filter(w => w.total_pnl !== null);
+            
+            document.getElementById('totalFavorites').textContent = favorites.length;
+            
+            if (validData.length === 0) {
+                document.getElementById('totalPnl').textContent = '-';
+                document.getElementById('avgRoi').textContent = '-';
+                document.getElementById('avgWinrate').textContent = '-';
+                return;
+            }
+
+            const totalPnl = validData.reduce((sum, w) => sum + (w.total_pnl || 0), 0);
+            const avgRoi = validData.reduce((sum, w) => sum + (w.total_roi_percentage || 0), 0) / validData.length;
+            const avgWinrate = validData.reduce((sum, w) => sum + (w.winrate || 0), 0) / validData.length;
+
+            document.getElementById('totalPnl').textContent = '$' + totalPnl.toFixed(2);
+            document.getElementById('avgRoi').textContent = avgRoi.toFixed(2) + '%';
+            document.getElementById('avgWinrate').textContent = avgWinrate.toFixed(2) + '%';
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert(`✅ Adresse copiée: ${text}`);
+            });
+        }
+
+        // Initialiser au chargement
+        window.onload = function() {
+            initializeFavorites();
+            loadFavorites();
+        };
+    </script>
+</body>
+</html>
